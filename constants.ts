@@ -8,18 +8,27 @@ export const PARTICLE_COUNT = 900;
 // ==========================================
 // 📷 照片配置区域
 // ==========================================
-// 部署说明：
-// 为了支持 GitHub Pages 等子目录部署，请使用相对路径（不要以 / 开头）。
-// 确保 public/photos 文件夹中存在对应的文件。
-// ==========================================
 
-export const PHOTOS = [
-  "photos/1.jpg",   
-  "photos/2.png",   
-  "photos/3.jpg",
-  "photos/4.jpg",
-  // "photos/5.jpg", 
+// 获取当前部署的基础路径 (解决 GitHub Pages 子目录问题)
+// 使用安全的访问方式，防止 import.meta.env 未定义导致报错
+const meta = import.meta as any;
+const BASE_URL = (meta && meta.env && meta.env.BASE_URL) ? meta.env.BASE_URL : './';
+
+// 定义照片文件名 (确保 public/photos 文件夹中有这些文件)
+const PHOTO_FILENAMES = [
+  "1.jpg",   
+  "2.png",   
+  "3.jpg",
+  "4.jpg",
+  // "5.jpg", 
 ];
+
+// 自动构建完整路径: ./photos/1.jpg 或 /repo-name/photos/1.jpg
+export const PHOTOS = PHOTO_FILENAMES.map(name => {
+  // 处理 BASE_URL 结尾可能带 / 也可能不带的情况，避免双斜杠
+  const base = BASE_URL.endsWith('/') ? BASE_URL : `${BASE_URL}/`;
+  return `${base}photos/${name}`;
+});
 
 export const generateTreeData = (): ParticleData[] => {
   const data: ParticleData[] = [];
@@ -78,13 +87,20 @@ export const generateTreeData = (): ParticleData[] => {
        const surfaceOffset = 0.35; 
        initialPos.add(normal.multiplyScalar(surfaceOffset));
 
-       // Unleashed: Scatter in volume
+       // Unleashed: Ring / Ellipse Layout
+       // Distribute in a ring facing the camera
+       const ringAngle = Math.random() * Math.PI * 2;
+       // Inner radius ~11, Outer ~16 (wide spread)
+       const ringRadius = 11 + Math.random() * 5; 
+       
+       // Elliptical scaling: Wider X, slightly shorter Y to fit screen aspect
        randomPos = new Vector3(
-         (Math.random() - 0.5) * 32, 
-         (Math.random() - 0.5) * 20, 
-         5 + Math.random() * 19      
+         Math.cos(ringAngle) * ringRadius * 1.4, // Wider X
+         Math.sin(ringAngle) * ringRadius * 0.9, // Height
+         16 + (Math.random() - 0.5) * 4          // Z depth: Close to camera (camera is at 28)
        );
 
+       // Randomize rotation but keep them mostly facing forward/inward
        randomRotation = new Vector3(
            (Math.random() - 0.5) * 0.5, 
            (Math.random() - 0.5) * 0.5, 

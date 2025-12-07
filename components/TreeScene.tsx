@@ -223,7 +223,8 @@ const TreeController = ({ gestureState }: { gestureState: HandGestureState }) =>
 
   return (
     <>
-      <group position={[0, -3, 0]}>
+      {/* Moved up from -3 to -1.0 */}
+      <group position={[0, -1.0, 0]}>
         {treeData.map((data) => (
           <Particle 
             key={data.id} 
