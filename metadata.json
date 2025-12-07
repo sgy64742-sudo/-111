@@ -1,0 +1,7 @@
+{
+  "name": "Magic Gesture Christmas Tree",
+  "description": "A cinematic 3D Christmas tree controlled by hand gestures. Open your hand to unleash the magic, close it to restore the tree.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
