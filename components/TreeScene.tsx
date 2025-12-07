@@ -75,7 +75,8 @@ const SafePhoto = ({ url }: { url: string }) => {
             },
             undefined, // onProgress
             (err) => {
-                console.warn(`Failed to load photo at ${url}. Please check if the file exists in public/photos/`, err);
+                // Warning is enough, don't crash.
+                // console.warn(`Failed to load photo at ${url}`, err); 
                 setHasError(true);
             }
         );
@@ -122,12 +123,15 @@ const Particle = ({ data, isUnleashed }: { data: ParticleData; isUnleashed: bool
     meshRef.current.position.copy(positionRef.current);
 
     if (isUnleashed) {
-       // When unleashed, interpolate towards the specific random rotation for that particle
        if (data.type === 'photo') {
-           // Smooth damping to random rotation
-           meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, data.randomRotation.x, delta * 2);
-           meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, data.randomRotation.y, delta * 2);
-           meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, data.randomRotation.z, delta * 2);
+           // BILLBOARD EFFECT:
+           // Create a dummy object at current position and look at camera
+           const dummy = new THREE.Object3D();
+           dummy.position.copy(meshRef.current.position);
+           dummy.lookAt(state.camera.position);
+           
+           // Smoothly rotate towards camera
+           meshRef.current.quaternion.slerp(dummy.quaternion, delta * 5);
        } else {
            // Ornaments tumble
            meshRef.current.rotation.x += delta * 0.5;
@@ -203,6 +207,19 @@ const TreeController = ({ gestureState }: { gestureState: HandGestureState }) =>
   const controlsRef = useRef<any>(null);
 
   useFrame((state, delta) => {
+    // 🎥 Dynamic Camera Zoom Logic
+    // Fix: Do NOT set z position directly, as it fights OrbitControls during drag/rotate.
+    // Instead, modify the LENGTH of the camera vector (distance from 0,0,0).
+    const currentDist = state.camera.position.length();
+    
+    // Target Distance: 
+    // 32 = Assembled tree (close enough to fill screen)
+    // 45 = Unleashed (zoom out to see the ribbon)
+    const targetDist = gestureState.isOpen ? 45 : 32;
+    
+    const newDist = THREE.MathUtils.lerp(currentDist, targetDist, delta * 1.5);
+    state.camera.position.setLength(newDist);
+
     if (gestureState.isDetected) {
         const targetAzimuth = -gestureState.position.x * 1.5;
         const targetPolar = (gestureState.position.y * 0.5) + (Math.PI / 2);
@@ -213,18 +230,14 @@ const TreeController = ({ gestureState }: { gestureState: HandGestureState }) =>
             controls.setPolarAngle(THREE.MathUtils.lerp(controls.getPolarAngle(), targetPolar, delta * 2));
             controls.update();
         }
-    } else {
-        if (controlsRef.current) {
-             controlsRef.current.autoRotate = true;
-             controlsRef.current.autoRotateSpeed = 0.5;
-        }
     }
+    // Note: Auto-rotate is handled by OrbitControls prop now to avoid conflict
   });
 
   return (
     <>
-      {/* Moved up from -3 to -1.0 */}
-      <group position={[0, -1.0, 0]}>
+      {/* Adjusted Y position to center the tree better (0.5) */}
+      <group position={[0, 0.5, 0]}>
         {treeData.map((data) => (
           <Particle 
             key={data.id} 
@@ -241,6 +254,9 @@ const TreeController = ({ gestureState }: { gestureState: HandGestureState }) =>
         enablePan={false} 
         maxPolarAngle={Math.PI / 1.5}
         minPolarAngle={Math.PI / 4}
+        // Auto rotate only when no hand detected
+        autoRotate={!gestureState.isDetected}
+        autoRotateSpeed={0.5}
       />
     </>
   );
@@ -250,7 +266,7 @@ export const TreeScene: React.FC<TreeSceneProps> = ({ gestureState }) => {
   return (
     <Canvas 
       shadows 
-      camera={{ position: [0, 0, 28], fov: 40 }}
+      camera={{ position: [0, 0, 32], fov: 40 }}
       gl={{ antialias: false, toneMapping: THREE.ReinhardToneMapping, toneMappingExposure: 1.2 }}
     >
       <color attach="background" args={['#020202']} />
