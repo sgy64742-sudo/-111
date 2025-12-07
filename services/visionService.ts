@@ -9,8 +9,9 @@ class VisionService {
     if (this.handLandmarker) return;
 
     try {
+      // Use a newer, stable version for the WASM binaries
       const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
       );
       
       this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
@@ -24,6 +25,7 @@ class VisionService {
       console.log("HandLandmarker initialized");
     } catch (error) {
       console.error("Failed to initialize HandLandmarker:", error);
+      throw error; // Re-throw so App can catch it
     }
   }
 

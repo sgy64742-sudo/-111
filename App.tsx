@@ -83,13 +83,21 @@ const App: React.FC = () => {
     position: { x: 0, y: 0 }
   });
   const [cameraPermission, setCameraPermission] = useState<boolean>(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Initialize Vision
   useEffect(() => {
     const init = async () => {
-        await visionService.initialize();
-        setLoading(false);
+        try {
+            await visionService.initialize();
+            setLoading(false);
+        } catch (e) {
+            console.error(e);
+            setInitError("Failed to load Vision AI. Please refresh.");
+            setLoading(false);
+        }
     };
     init();
   }, []);
@@ -139,11 +147,11 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!loading && cameraPermission) {
+    if (!loading && cameraPermission && !initError) {
         requestRef.current = requestAnimationFrame(detect);
     }
     return () => cancelAnimationFrame(requestRef.current);
-  }, [loading, cameraPermission]);
+  }, [loading, cameraPermission, initError]);
 
   return (
     <div className="relative w-full h-full bg-black font-sans overflow-hidden">
@@ -172,8 +180,11 @@ const App: React.FC = () => {
         {/* Webcam Preview */}
         <div className="relative w-48 h-36 md:w-64 md:h-48 border-2 border-yellow-500/50 rounded-lg overflow-hidden shadow-[0_0_20px_rgba(255,215,0,0.3)] bg-black/50 backdrop-blur-sm pointer-events-auto">
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center p-2">
-                {!cameraPermission && (
+                {!cameraPermission && !cameraError && (
                      <p className="text-white text-xs">Waiting for camera...</p>
+                )}
+                {cameraError && (
+                     <p className="text-red-400 text-xs font-bold">{cameraError}</p>
                 )}
             </div>
             {/* Video Feed */}
@@ -181,6 +192,10 @@ const App: React.FC = () => {
                 ref={webcamRef}
                 mirrored
                 onUserMedia={() => setCameraPermission(true)}
+                onUserMediaError={(err) => {
+                    console.error("Camera Error:", err);
+                    setCameraError("Camera Access Denied or Failed");
+                }}
                 className="absolute inset-0 w-full h-full object-cover z-10 opacity-80"
                 videoConstraints={{
                     width: 320,
@@ -212,6 +227,16 @@ const App: React.FC = () => {
             <div className="flex flex-col items-center">
                 <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p>Loading Magic...</p>
+            </div>
+        </div>
+      )}
+
+      {/* Initialization Error Overlay */}
+      {initError && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 text-white">
+            <div className="text-center p-4">
+                <p className="text-red-500 text-xl mb-2">⚠️ Error</p>
+                <p>{initError}</p>
             </div>
         </div>
       )}
