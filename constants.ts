@@ -8,17 +8,17 @@ export const PARTICLE_COUNT = 900;
 // ==========================================
 // 📷 照片配置区域
 // ==========================================
-// 在标准部署环境（Vercel/Netlify）中：
-// public 文件夹的内容会被放到网站根目录。
-// 所以引用路径应该是 "/photos/1.jpg" 而不是 "/public/photos/1.jpg"
+// 部署说明：
+// 为了支持 GitHub Pages 等子目录部署，请使用相对路径（不要以 / 开头）。
+// 确保 public/photos 文件夹中存在对应的文件。
 // ==========================================
 
 export const PHOTOS = [
-  "/photos/1.jpg",   
-  "/photos/2.png",   
-  "/photos/3.jpg",
-  "/photos/4.jpg",
-  // "/photos/5.jpg", 
+  "photos/1.jpg",   
+  "photos/2.png",   
+  "photos/3.jpg",
+  "photos/4.jpg",
+  // "photos/5.jpg", 
 ];
 
 export const generateTreeData = (): ParticleData[] => {
