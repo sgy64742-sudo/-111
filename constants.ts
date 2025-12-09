@@ -9,6 +9,7 @@ export const PARTICLE_COUNT = 900;
 // 📷 Config
 // ==========================================
 
+// Photo filenames from public/photos directory
 const PHOTO_FILENAMES = [
   "1.jpg",   
   "2.png",   
@@ -17,9 +18,11 @@ const PHOTO_FILENAMES = [
   // "5.jpg", 
 ];
 
-// Use explicit relative paths with dot. 
-// This ensures the browser looks relative to index.html in the current folder.
-export const PHOTOS = PHOTO_FILENAMES.map(name => `./photos/${name}`);
+// Construct full paths - in Vite, public/photos/ becomes /photos/ in build
+export const PHOTOS = PHOTO_FILENAMES.map(name => {
+  // Use direct path to public/photos/ directory
+  return `/photos/${name}`;
+});
 
 export const generateTreeData = (): ParticleData[] => {
   const data: ParticleData[] = [];
@@ -32,7 +35,7 @@ export const generateTreeData = (): ParticleData[] => {
   
   // Track photo positions to prevent overlap in the unleashed state
   const placedPhotosUnleashed: Vector3[] = [];
-  const MIN_PHOTO_DIST = 3.0; 
+  const MIN_PHOTO_DIST = 3.0; // Minimum distance between photos (increased for safety)
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const t = i / (PARTICLE_COUNT - 1);
