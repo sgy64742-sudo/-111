@@ -18,10 +18,11 @@ const PHOTO_FILENAMES = [
   // "5.jpg", 
 ];
 
-// Construct full paths - in Vite, public/photos/ becomes /photos/ in build
+// Construct full paths using Vite's BASE_URL to support different deployment environments
 export const PHOTOS = PHOTO_FILENAMES.map(name => {
-  // Use direct path to public/photos/ directory
-  return `/photos/${name}`;
+  // Use import.meta.env.BASE_URL to support both local dev and deployment
+  const baseUrl = import.meta.env.BASE_URL;
+  return `${baseUrl}photos/${name}`;
 });
 
 export const generateTreeData = (): ParticleData[] => {
