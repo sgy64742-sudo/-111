@@ -20,9 +20,8 @@ const PHOTO_FILENAMES = [
 
 // Construct full paths using Vite's BASE_URL to support different deployment environments
 export const PHOTOS = PHOTO_FILENAMES.map(name => {
-  // Use import.meta.env.BASE_URL to support both local dev and deployment
-  const baseUrl = import.meta.env.BASE_URL;
-  return `${baseUrl}photos/${name}`;
+  // 不再依赖 import.meta.env.BASE_URL，直接指向根目录下的 photos 文件夹
+  return `/photos/${name}`;
 });
 
 export const generateTreeData = (): ParticleData[] => {
