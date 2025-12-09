@@ -9,10 +9,6 @@ export const PARTICLE_COUNT = 900;
 // 📷 Config
 // ==========================================
 
-// Handle paths robustly for both local dev and production subdirectories (e.g. GitHub Pages)
-// @ts-ignore
-const baseUrl = import.meta.env?.BASE_URL || './';
-
 const PHOTO_FILENAMES = [
   "1.jpg",   
   "2.png",   
@@ -21,12 +17,9 @@ const PHOTO_FILENAMES = [
   // "5.jpg", 
 ];
 
-// Construct full paths
-export const PHOTOS = PHOTO_FILENAMES.map(name => {
-    // Ensure no double slashes if baseUrl ends with /
-    const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-    return `${cleanBase}photos/${name}`;
-});
+// Use explicit relative paths with dot. 
+// This ensures the browser looks relative to index.html in the current folder.
+export const PHOTOS = PHOTO_FILENAMES.map(name => `./photos/${name}`);
 
 export const generateTreeData = (): ParticleData[] => {
   const data: ParticleData[] = [];
@@ -39,7 +32,7 @@ export const generateTreeData = (): ParticleData[] => {
   
   // Track photo positions to prevent overlap in the unleashed state
   const placedPhotosUnleashed: Vector3[] = [];
-  const MIN_PHOTO_DIST = 3.0; // Minimum distance between photos (increased for safety)
+  const MIN_PHOTO_DIST = 3.0; 
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const t = i / (PARTICLE_COUNT - 1);

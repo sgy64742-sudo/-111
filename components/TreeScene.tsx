@@ -75,7 +75,6 @@ const SafePhoto = ({ url }: { url: string }) => {
             },
             undefined, // onProgress
             (err) => {
-                // Warning is enough, don't crash.
                 // console.warn(`Failed to load photo at ${url}`, err); 
                 setHasError(true);
             }
@@ -88,7 +87,6 @@ const SafePhoto = ({ url }: { url: string }) => {
             {texture && !hasError ? (
                  <meshBasicMaterial map={texture} transparent side={THREE.DoubleSide} />
             ) : (
-                 // Fallback placeholder if loading fails
                  <meshStandardMaterial color="#e0e0e0" roughness={0.8} />
             )}
         </mesh>
@@ -99,14 +97,11 @@ const Particle = ({ data, isUnleashed }: { data: ParticleData; isUnleashed: bool
   const meshRef = useRef<THREE.Group>(null);
   const positionRef = useRef(data.initialPos.clone());
   
-  // Calculate specific rotation for photos to face outward correctly on the tree
   const initialRotation = useMemo(() => {
     if (data.type === 'photo') {
         const dummy = new THREE.Object3D();
         dummy.position.copy(data.initialPos);
-        // Look at the center axis at the same height (0, y, 0)
         dummy.lookAt(0, data.initialPos.y, 0); 
-        // Rotate 180 deg so Z (front) faces OUT
         dummy.rotateY(Math.PI);
         return dummy.rotation;
     }
@@ -124,21 +119,16 @@ const Particle = ({ data, isUnleashed }: { data: ParticleData; isUnleashed: bool
 
     if (isUnleashed) {
        if (data.type === 'photo') {
-           // BILLBOARD EFFECT:
-           // Create a dummy object at current position and look at camera
+           // BILLBOARD EFFECT
            const dummy = new THREE.Object3D();
            dummy.position.copy(meshRef.current.position);
            dummy.lookAt(state.camera.position);
-           
-           // Smoothly rotate towards camera
            meshRef.current.quaternion.slerp(dummy.quaternion, delta * 5);
        } else {
-           // Ornaments tumble
            meshRef.current.rotation.x += delta * 0.5;
            meshRef.current.rotation.y += delta * 0.5;
        }
     } else {
-       // Return to tree alignment
        if (data.type === 'photo') {
           meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, initialRotation.x, delta * 4);
           meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, initialRotation.y, delta * 4);
@@ -155,19 +145,16 @@ const Particle = ({ data, isUnleashed }: { data: ParticleData; isUnleashed: bool
     return (
       <group ref={meshRef}>
         <group>
-            {/* Polaroid Backing Frame */}
             <mesh position={[0, 0, -0.05]}>
                 <boxGeometry args={[1.3, 1.6, 0.1]} />
                 <meshStandardMaterial color="#eeeeee" roughness={0.9} />
             </mesh>
-            {/* Photo Image - Uses SafePhoto to prevent crashes */}
             <SafePhoto url={data.photoUrl} />
         </group>
       </group>
     );
   }
 
-  // Light Sphere (White LED)
   if (data.type === 'light') {
     return (
         <group ref={meshRef}>
@@ -184,16 +171,14 @@ const Particle = ({ data, isUnleashed }: { data: ParticleData; isUnleashed: bool
     );
   }
 
-  // Ornaments (Standard Spheres)
   return (
     <group ref={meshRef}>
         <mesh castShadow receiveShadow>
-          <sphereGeometry args={[data.scale * 0.5, 24, 24]} />
-          {/* Increased Shininess: Lower metalness allows white specular highlights, lower roughness makes them sharp */}
+          <sphereGeometry args={[data.scale, 32, 32]} />
           <meshStandardMaterial 
             color={data.color} 
             metalness={0.6} 
-            roughness={0.1}
+            roughness={0.1} 
             emissive={data.color}
             emissiveIntensity={0.2}
           />
@@ -203,102 +188,60 @@ const Particle = ({ data, isUnleashed }: { data: ParticleData; isUnleashed: bool
 };
 
 const TreeController = ({ gestureState }: { gestureState: HandGestureState }) => {
-  const treeData = useMemo(() => generateTreeData(), []);
-  const controlsRef = useRef<any>(null);
-
-  useFrame((state, delta) => {
-    // 🎥 Dynamic Camera Zoom Logic
-    // Fix: Do NOT set z position directly, as it fights OrbitControls during drag/rotate.
-    // Instead, modify the LENGTH of the camera vector (distance from 0,0,0).
-    const currentDist = state.camera.position.length();
+    const groupRef = useRef<THREE.Group>(null);
+    const data = useMemo(() => generateTreeData(), []);
     
-    // Target Distance: 
-    // 32 = Assembled tree (close enough to fill screen)
-    // 45 = Unleashed (zoom out to see the ribbon)
-    const targetDist = gestureState.isOpen ? 45 : 32;
-    
-    const newDist = THREE.MathUtils.lerp(currentDist, targetDist, delta * 1.5);
-    state.camera.position.setLength(newDist);
-
-    if (gestureState.isDetected) {
-        const targetAzimuth = -gestureState.position.x * 1.5;
-        const targetPolar = (gestureState.position.y * 0.5) + (Math.PI / 2);
+    useFrame((state, delta) => {
+        if (!groupRef.current) return;
         
-        if (controlsRef.current) {
-            const controls = controlsRef.current;
-            controls.setAzimuthalAngle(THREE.MathUtils.lerp(controls.getAzimuthalAngle(), targetAzimuth, delta * 2));
-            controls.setPolarAngle(THREE.MathUtils.lerp(controls.getPolarAngle(), targetPolar, delta * 2));
-            controls.update();
-        }
-    }
-    // Note: Auto-rotate is handled by OrbitControls prop now to avoid conflict
-  });
+        // Hand rotation control (smooth lerp)
+        const targetRotationY = gestureState.isDetected ? gestureState.position.x * 2 : 0;
+        groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotationY, delta * 2);
+    });
 
+    return (
+        <group ref={groupRef} position={[0, 1.5, 0]}>
+            <StarTopper />
+            {data.map((p) => (
+                <Particle key={p.id} data={p} isUnleashed={gestureState.isDetected && gestureState.isOpen} />
+            ))}
+        </group>
+    );
+};
+
+export const TreeScene = ({ gestureState }: TreeSceneProps) => {
   return (
-    <>
-      {/* Adjusted Y position to center the tree better (0.5) */}
-      <group position={[0, 0.5, 0]}>
-        {treeData.map((data) => (
-          <Particle 
-            key={data.id} 
-            data={data} 
-            isUnleashed={gestureState.isOpen} 
-          />
-        ))}
-        <StarTopper />
-      </group>
+    <Canvas
+      shadows
+      camera={{ position: [0, 0, 32], fov: 45 }}
+      gl={{ preserveDrawingBuffer: true, antialias: true }}
+    >
+      <color attach="background" args={['#050505']} />
+      
+      {/* Lighting */}
+      <ambientLight intensity={0.2} />
+      <pointLight position={[10, 10, 10]} intensity={1.5} castShadow />
+      <pointLight position={[-10, 10, -10]} intensity={1.0} color="#ffaa00" />
+      <spotLight position={[0, 20, 0]} angle={0.5} penumbra={1} intensity={2} castShadow />
 
+      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+
+      <TreeController gestureState={gestureState} />
+      
+      {/* Controls */}
       <OrbitControls 
-        ref={controlsRef} 
-        enableZoom={true} 
         enablePan={false} 
-        maxPolarAngle={Math.PI / 1.5}
-        minPolarAngle={Math.PI / 4}
-        // Auto rotate only when no hand detected
+        enableZoom={true} 
+        minDistance={10} 
+        maxDistance={60}
         autoRotate={!gestureState.isDetected}
         autoRotateSpeed={0.5}
       />
-    </>
-  );
-};
 
-export const TreeScene: React.FC<TreeSceneProps> = ({ gestureState }) => {
-  return (
-    <Canvas 
-      shadows 
-      camera={{ position: [0, 0, 32], fov: 40 }}
-      gl={{ antialias: false, toneMapping: THREE.ReinhardToneMapping, toneMappingExposure: 1.2 }}
-    >
-      <color attach="background" args={['#020202']} />
-      
-      {/* Lighting */}
-      <ambientLight intensity={0.3} />
-      <pointLight position={[10, 5, 10]} intensity={2} color="#ffaa00" distance={50} decay={2} />
-      <pointLight position={[-10, 5, -10]} intensity={1} color="#00ffaa" distance={50} decay={2} />
-      
-      {/* Spotlight on the tree */}
-      <spotLight 
-        position={[0, 30, 10]} 
-        angle={0.3} 
-        penumbra={0.5} 
-        intensity={3} 
-        color="#fff" 
-        castShadow 
-      />
-
-      <Stars radius={100} depth={50} count={6000} factor={4} saturation={0} fade speed={1} />
-      <Environment preset="city" />
-
-      <TreeController gestureState={gestureState} />
-
-      <EffectComposer>
-        <Bloom 
-            luminanceThreshold={1} 
-            mipmapBlur 
-            intensity={1.5} 
-            radius={0.5}
-        />
-        <Vignette eskil={false} offset={0.1} darkness={1.0} />
+      {/* Post Processing */}
+      <EffectComposer enableNormalPass={false}>
+        <Bloom luminanceThreshold={1.2} mipmapBlur intensity={1.2} radius={0.6} />
+        <Vignette eskil={false} offset={0.1} darkness={0.5} />
       </EffectComposer>
     </Canvas>
   );
